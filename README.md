@@ -14,25 +14,6 @@ This project is currently in active development, transitioning from a monolith t
 - **Dashboard & Analytics**: Real-time burndown charts, velocity tracking, and workload distribution.
 - **Audit & Activity Logs**: Comprehensive tracking of security events and entity state changes.
 
-## 🏗️ Architecture Roadmap
-
-The project is built following an evolutionary architecture approach:
-
-### Phase 1: Monolith (Current State)
-- **Tech Stack**: Java 21, Spring Boot 3.3.x, Spring Data JPA, Spring Security, PostgreSQL, Redis.
-- **Structure**: Single Spring Boot application with modular packages (Auth, Org, Team, Project, Task, Comment).
-
-### Phase 2: Microservices (Target State)
-- **Services**: 
-  - Auth Service
-  - Org/User Service
-  - Project Service
-  - Task/Sprint Service
-  - Notification Service
-  - AI Service
-- **Infrastructure**: Spring Cloud Gateway, Eureka Service Discovery, Spring Cloud Config.
-- **Messaging**: RabbitMQ for asynchronous event-driven communication.
-
 ## 📂 Project Structure
 
 ```text
