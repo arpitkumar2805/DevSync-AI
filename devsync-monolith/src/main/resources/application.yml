@@ -40,6 +40,15 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  ai:
+    openai:
+      api-key: ${GROQ_API_KEY:}
+      base-url: https://api.groq.com/openai/v1
+      chat:
+        options:
+          model: llama3-8b-8192
+          temperature: 0.7
+
 # JWT Configuration
 devsync:
   jwt:

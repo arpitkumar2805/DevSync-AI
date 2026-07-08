@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  devsync-postgres:
+    image: postgres:16-alpine
+    container_name: devsync-postgres
+    environment:
+      POSTGRES_USER: devsync
+      POSTGRES_PASSWORD: devsync_secret
+      POSTGRES_DB: devsync_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - devsync-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devsync -d devsync_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  devsync-redis:
+    image: redis:7-alpine
+    container_name: devsync-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - devsync-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  devsync-monolith:
+    build:
+      context: .
+      dockerfile: devsync-monolith/Dockerfile
+    container_name: devsync-monolith
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/devsync_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - SPRING_DATA_REDIS_HOST=devsync-redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      devsync-redis:
+        condition: service_healthy
+
+volumes:
+  devsync-pgdata:
+  devsync-redisdata:
