@@ -7,7 +7,10 @@ import com.devsync.monolith.auth.entity.User;
 import com.devsync.monolith.auth.repository.UserRepository;
 import com.devsync.monolith.org.dto.*;
 import com.devsync.monolith.org.entity.Organization;
+import com.devsync.monolith.org.entity.OrgInvitation;
 import com.devsync.monolith.org.repository.OrganizationRepository;
+import com.devsync.monolith.org.repository.OrgInvitationRepository;
+import com.devsync.monolith.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +28,8 @@ public class OrganizationService {
     private static final Logger log = LoggerFactory.getLogger(OrganizationService.class);
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
+    private final OrgInvitationRepository orgInvitationRepository;
+    private final EmailService emailService;
 
     @Transactional
     public OrgResponse create(CreateOrgRequest request, UUID creatorUserId) {
@@ -90,20 +95,38 @@ public class OrganizationService {
 
     @Transactional
     public void inviteMember(UUID orgId, InviteMemberRequest request) {
-        organizationRepository.findByIdAndDeletedFalse(orgId)
+        Organization org = organizationRepository.findByIdAndDeletedFalse(orgId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", orgId));
 
-        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", request.getEmail()));
+        java.util.Optional<User> userOpt = userRepository.findByEmailAndDeletedFalse(request.getEmail());
 
-        if (user.getOrganizationId() != null && user.getOrganizationId().equals(orgId)) {
-            throw new DuplicateResourceException("User", "organization", orgId);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (user.getOrganizationId() != null && user.getOrganizationId().equals(orgId)) {
+                throw new DuplicateResourceException("User", "organization", orgId);
+            }
+            user.setOrganizationId(orgId);
+            user.setRoleName(request.getRoleName());
+            userRepository.save(user);
+            log.info("User {} invited to org {} with role {}", user.getEmail(), orgId, request.getRoleName());
+        } else {
+            // Unregistered user: save as pending invitation
+            if (!orgInvitationRepository.existsByEmailAndStatusAndDeletedFalse(request.getEmail(), "PENDING")) {
+                OrgInvitation invitation = OrgInvitation.builder()
+                        .email(request.getEmail())
+                        .organizationId(orgId)
+                        .roleName(request.getRoleName())
+                        .status("PENDING")
+                        .build();
+                orgInvitationRepository.save(invitation);
+                log.info("Pending invitation created for email {} to org {} with role {}", request.getEmail(), orgId, request.getRoleName());
+            } else {
+                log.info("Pending invitation already exists for email {} to org {}", request.getEmail(), orgId);
+            }
         }
 
-        user.setOrganizationId(orgId);
-        user.setRoleName(request.getRoleName());
-        userRepository.save(user);
-        log.info("User {} invited to org {} with role {}", user.getEmail(), orgId, request.getRoleName());
+        // Trigger asynchronous email dispatch (logs warning & falls back gracefully if SMTP is unconfigured)
+        emailService.sendInvitationEmail(request.getEmail(), org.getName(), request.getRoleName());
     }
 
     private OrgResponse toResponse(Organization org) {

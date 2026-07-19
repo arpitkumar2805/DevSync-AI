@@ -1,0 +1,70 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auth_db
+    username: devsync
+    password: devsync_secret
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 3
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# JWT Configuration
+devsync:
+  jwt:
+    secret: ${JWT_SECRET:devSyncAiSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong2024}
+    access-token-expiration: 900000
+    refresh-token-expiration: 604800000
+
+# Eureka
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+# Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Logging
+logging:
+  level:
+    com.devsync: DEBUG

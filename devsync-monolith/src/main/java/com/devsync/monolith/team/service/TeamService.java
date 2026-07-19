@@ -32,6 +32,19 @@ public class TeamService {
 
     @Transactional
     public TeamResponse create(CreateTeamRequest request, UUID orgId) {
+        if (orgId == null) {
+            orgId = request.getOrganizationId();
+        }
+        if (orgId == null) {
+            String currentUserIdStr = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            if (currentUserIdStr != null && !currentUserIdStr.equals("anonymousUser")) {
+                UUID currentUserId = UUID.fromString(currentUserIdStr);
+                User currentUser = userRepository.findByIdAndDeletedFalse(currentUserId).orElse(null);
+                if (currentUser != null) {
+                    orgId = currentUser.getOrganizationId();
+                }
+            }
+        }
         Team team = Team.builder()
                 .organizationId(orgId)
                 .name(request.getName())
@@ -68,6 +81,16 @@ public class TeamService {
     }
 
     public PageResponse<TeamResponse> listByOrganization(UUID orgId, Pageable pageable) {
+        if (orgId == null) {
+            String currentUserIdStr = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            if (currentUserIdStr != null && !currentUserIdStr.equals("anonymousUser")) {
+                UUID currentUserId = UUID.fromString(currentUserIdStr);
+                User currentUser = userRepository.findByIdAndDeletedFalse(currentUserId).orElse(null);
+                if (currentUser != null) {
+                    orgId = currentUser.getOrganizationId();
+                }
+            }
+        }
         Page<Team> page = teamRepository.findByOrganizationIdAndDeletedFalse(orgId, pageable);
         return PageResponse.of(page.map(this::toResponse));
     }

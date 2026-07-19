@@ -74,6 +74,16 @@ public class UserService {
     }
 
     public PageResponse<UserResponse> listByOrganization(UUID orgId, Pageable pageable) {
+        if (orgId == null) {
+            String currentUserIdStr = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            if (currentUserIdStr != null && !currentUserIdStr.equals("anonymousUser")) {
+                UUID currentUserId = UUID.fromString(currentUserIdStr);
+                User currentUser = userRepository.findByIdAndDeletedFalse(currentUserId).orElse(null);
+                if (currentUser != null) {
+                    orgId = currentUser.getOrganizationId();
+                }
+            }
+        }
         Page<User> page = userRepository.findByOrganizationIdAndDeletedFalse(orgId, pageable);
         return PageResponse.of(page.map(this::toResponse));
     }

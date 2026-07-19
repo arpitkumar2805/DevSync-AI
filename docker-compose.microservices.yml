@@ -1,0 +1,253 @@
+version: '3.8'
+
+services:
+  # ==================== INFRASTRUCTURE ====================
+  
+  devsync-postgres:
+    image: postgres:16-alpine
+    container_name: devsync-postgres
+    environment:
+      POSTGRES_USER: devsync
+      POSTGRES_PASSWORD: devsync_secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - devsync-pgdata:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devsync"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  devsync-redis:
+    image: redis:7-alpine
+    container_name: devsync-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - devsync-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  devsync-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: devsync-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - devsync-rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== SPRING CLOUD INFRA ====================
+
+  discovery-server:
+    build:
+      context: .
+      dockerfile: devsync-discovery-server/Dockerfile
+    container_name: devsync-discovery-server
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    build:
+      context: .
+      dockerfile: devsync-config-server/Dockerfile
+    container_name: devsync-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: devsync-api-gateway/Dockerfile
+    container_name: devsync-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATA_REDIS_HOST=devsync-redis
+      - CONFIG_SERVER_URL=http://config-server:8888
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      devsync-redis:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  # ==================== MICROSERVICES ====================
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: devsync-auth-service/Dockerfile
+    container_name: devsync-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/auth_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - SPRING_DATA_REDIS_HOST=devsync-redis
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - CONFIG_SERVER_URL=http://config-server:8888
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      devsync-redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  org-user-service:
+    build:
+      context: .
+      dockerfile: devsync-org-user-service/Dockerfile
+    container_name: devsync-org-user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/org_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - CONFIG_SERVER_URL=http://config-server:8888
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  project-service:
+    build:
+      context: .
+      dockerfile: devsync-project-service/Dockerfile
+    container_name: devsync-project-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/project_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - SPRING_DATA_REDIS_HOST=devsync-redis
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - CONFIG_SERVER_URL=http://config-server:8888
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      devsync-redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  task-service:
+    build:
+      context: .
+      dockerfile: devsync-task-service/Dockerfile
+    container_name: devsync-task-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/task_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - SPRING_RABBITMQ_HOST=devsync-rabbitmq
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - CONFIG_SERVER_URL=http://config-server:8888
+    volumes:
+      - devsync-uploads:/app/uploads
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      devsync-rabbitmq:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: devsync-notification-service/Dockerfile
+    container_name: devsync-notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/notif_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - SPRING_RABBITMQ_HOST=devsync-rabbitmq
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - CONFIG_SERVER_URL=http://config-server:8888
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      devsync-rabbitmq:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: devsync-ai-service/Dockerfile
+    container_name: devsync-ai-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://devsync-postgres:5432/ai_db
+      - SPRING_DATASOURCE_USERNAME=devsync
+      - SPRING_DATASOURCE_PASSWORD=devsync_secret
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - CONFIG_SERVER_URL=http://config-server:8888
+    depends_on:
+      devsync-postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
+volumes:
+  devsync-pgdata:
+  devsync-redisdata:
+  devsync-rabbitmqdata:
+  devsync-uploads:

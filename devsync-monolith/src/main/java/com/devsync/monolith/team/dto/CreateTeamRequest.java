@@ -8,4 +8,5 @@ public class CreateTeamRequest {
     @NotBlank(message = "Team name is required")
     private String name;
     private String description;
+    private java.util.UUID organizationId;
 }

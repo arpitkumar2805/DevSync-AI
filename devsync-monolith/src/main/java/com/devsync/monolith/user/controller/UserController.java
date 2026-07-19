@@ -67,7 +67,7 @@ public class UserController {
     @GetMapping
     @Operation(summary = "List users by organization")
     public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> listByOrganization(
-            @RequestParam UUID orgId,
+            @RequestParam(required = false) UUID orgId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.success("Users retrieved",

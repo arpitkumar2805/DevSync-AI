@@ -11,7 +11,9 @@ import com.devsync.monolith.auth.entity.User;
 import com.devsync.monolith.auth.repository.RefreshTokenRepository;
 import com.devsync.monolith.auth.repository.UserRepository;
 import com.devsync.monolith.org.entity.Organization;
+import com.devsync.monolith.org.entity.OrgInvitation;
 import com.devsync.monolith.org.repository.OrganizationRepository;
+import com.devsync.monolith.org.repository.OrgInvitationRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +36,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final OrganizationRepository organizationRepository;
+    private final OrgInvitationRepository orgInvitationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RedisTemplate<String, Object> redisTemplate;
@@ -53,8 +56,17 @@ public class AuthService {
         UUID orgId = null;
         String roleName = "DEVELOPER";
 
-        // If org name provided, create org and assign ORG_ADMIN role
-        if (request.getOrganizationName() != null && !request.getOrganizationName().isBlank()) {
+        // Check if there is a pending invitation for this email
+        java.util.Optional<OrgInvitation> invitationOpt = orgInvitationRepository.findByEmailAndStatusAndDeletedFalse(request.getEmail(), "PENDING");
+        if (invitationOpt.isPresent()) {
+            OrgInvitation invitation = invitationOpt.get();
+            orgId = invitation.getOrganizationId();
+            roleName = invitation.getRoleName();
+            invitation.setStatus("ACCEPTED");
+            orgInvitationRepository.save(invitation);
+            log.info("Linked registering user {} to organization {} from pending invitation with role {}", request.getEmail(), orgId, roleName);
+        } else if (request.getOrganizationName() != null && !request.getOrganizationName().isBlank()) {
+            // If org name provided, create org and assign ORG_ADMIN role
             String slug = request.getOrganizationName().toLowerCase()
                     .replaceAll("[^a-z0-9\\s-]", "")
                     .replaceAll("\\s+", "-");

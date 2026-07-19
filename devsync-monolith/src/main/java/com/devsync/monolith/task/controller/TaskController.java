@@ -82,8 +82,7 @@ public class TaskController {
         } else if (projectId != null) {
             result = taskService.listByProject(projectId, pageRequest);
         } else {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("At least one of projectId, sprintId, or assigneeId is required"));
+            result = taskService.listAll(pageRequest);
         }
         return ResponseEntity.ok(ApiResponse.success("Tasks retrieved", result));
     }

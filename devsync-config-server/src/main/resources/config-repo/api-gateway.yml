@@ -1,0 +1,110 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            exposedHeaders: "Authorization"
+
+      routes:
+        # Auth Service
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/**
+
+        # Org/User Service
+        - id: org-user-service-orgs
+          uri: lb://org-user-service
+          predicates:
+            - Path=/api/v1/orgs/**
+        - id: org-user-service-users
+          uri: lb://org-user-service
+          predicates:
+            - Path=/api/v1/users/**
+        - id: org-user-service-teams
+          uri: lb://org-user-service
+          predicates:
+            - Path=/api/v1/teams/**
+        - id: org-user-service-settings
+          uri: lb://org-user-service
+          predicates:
+            - Path=/api/v1/settings/**
+        - id: org-user-service-audit
+          uri: lb://org-user-service
+          predicates:
+            - Path=/api/v1/audit-logs/**
+
+        # Project Service
+        - id: project-service
+          uri: lb://project-service
+          predicates:
+            - Path=/api/v1/projects/**
+        - id: project-service-dashboard
+          uri: lb://project-service
+          predicates:
+            - Path=/api/v1/dashboard/**
+
+        # Task Service
+        - id: task-service-sprints
+          uri: lb://task-service
+          predicates:
+            - Path=/api/v1/sprints/**
+        - id: task-service-tasks
+          uri: lb://task-service
+          predicates:
+            - Path=/api/v1/tasks/**
+        - id: task-service-activity
+          uri: lb://task-service
+          predicates:
+            - Path=/api/v1/activity/**
+
+        # Notification Service
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+
+        # AI Service
+        - id: ai-service
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/v1/ai/**
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+devsync:
+  jwt:
+    secret: ${JWT_SECRET:devSyncAiSuperSecretKeyForJwtTokenGenerationMustBeAtLeast256BitsLong2024}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+
+logging:
+  level:
+    com.devsync: DEBUG
+    org.springframework.cloud.gateway: DEBUG

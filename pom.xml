@@ -21,6 +21,15 @@
     <modules>
         <module>devsync-common</module>
         <module>devsync-monolith</module>
+        <module>devsync-auth-service</module>
+        <module>devsync-org-user-service</module>
+        <module>devsync-project-service</module>
+        <module>devsync-task-service</module>
+        <module>devsync-notification-service</module>
+        <module>devsync-ai-service</module>
+        <module>devsync-discovery-server</module>
+        <module>devsync-config-server</module>
+        <module>devsync-api-gateway</module>
     </modules>
 
     <properties>

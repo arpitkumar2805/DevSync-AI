@@ -124,6 +124,11 @@ public class TaskService {
         return PageResponse.of(page.map(this::toResponse));
     }
 
+    public PageResponse<TaskResponse> listAll(Pageable pageable) {
+        Page<Task> page = taskRepository.findAll(pageable);
+        return PageResponse.of(page.map(this::toResponse));
+    }
+
     @Transactional
     public TaskDependencyResponse addDependency(UUID taskId, AddDependencyRequest request) {
         if (taskId.equals(request.getDependsOnTaskId())) {

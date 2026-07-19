@@ -43,11 +43,25 @@ spring:
   ai:
     openai:
       api-key: ${GROQ_API_KEY:}
-      base-url: https://api.groq.com/openai/v1
+      base-url: https://api.groq.com/openai
       chat:
         options:
-          model: llama3-8b-8192
+          model: llama-3.1-8b-instant
           temperature: 0.7
+    retry:
+      max-attempts: 1
+
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # JWT Configuration
 devsync:
@@ -56,12 +70,12 @@ devsync:
     access-token-expiration: 900000      # 15 minutes
     refresh-token-expiration: 604800000  # 7 days
 
-  # AI Configuration (Groq with GPT-12B OSS)
+  # AI Configuration (Gemini)
   ai:
-    provider: groq
-    api-key: ${GROQ_API_KEY:}
-    model: openai/gpt-12b-oss
-    base-url: https://api.groq.com/openai/v1
+    provider: gemini
+    api-key: ${GEMINI_API_KEY:${GROQ_API_KEY:dummy-key-value}}
+    model: gemini-1.5-flash
+    base-url: https://generativelanguage.googleapis.com/v1beta/openai/
     max-tokens: 2048
     temperature: 0.7
 

@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: devsync_secret
       POSTGRES_DB: devsync_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - devsync-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -44,7 +44,12 @@ services:
       - SPRING_DATASOURCE_PASSWORD=devsync_secret
       - SPRING_DATA_REDIS_HOST=devsync-redis
       - SPRING_DATA_REDIS_PORT=6379
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY:-dummy-key-value}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-dummy-key-value}
+      - SPRING_MAIL_HOST=${SPRING_MAIL_HOST:-smtp.gmail.com}
+      - SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-587}
+      - SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:-}
+      - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:-}
     depends_on:
       devsync-postgres:
         condition: service_healthy

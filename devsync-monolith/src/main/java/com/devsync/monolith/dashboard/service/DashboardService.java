@@ -28,7 +28,7 @@ public class DashboardService {
         Project project = projectRepository.findByIdAndDeletedFalse(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
 
-        List<Task> allTasks = taskRepository.findByProjectIdAndDeletedFalse(projectId);
+        List<Task> allTasks = taskRepository.findByProjectIdAndDeletedFalse(projectId, org.springframework.data.domain.Pageable.unpaged()).getContent();
 
         long totalTasks = allTasks.size();
         long completedTasks = allTasks.stream().filter(t -> t.getStatus() == TaskStatus.DONE).count();
