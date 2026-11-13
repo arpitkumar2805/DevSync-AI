@@ -185,8 +185,8 @@ public class AIService {
         log.info("Starting AI request for feature: {}, user: {}", feature, userId);
 
         if (aiApiKey == null || aiApiKey.trim().isEmpty() || aiApiKey.equals("dummy-key-value")) {
-            log.error("AI provider API key is missing. Please configure NVIDIA_API_KEY.");
-            throw new IllegalArgumentException("AI provider API key is missing. Please configure NVIDIA_API_KEY.");
+            log.error("AI provider API key is missing. Please configure GROQ_API_KEY.");
+            throw new IllegalArgumentException("AI provider API key is missing. Please configure GROQ_API_KEY.");
         }
 
         long startTime = System.currentTimeMillis();
@@ -194,11 +194,7 @@ public class AIService {
         String response;
         try {
             ChatClient chatClient = chatClientBuilder.build();
-            // The configured NVIDIA NIM model is a reasoning model that otherwise echoes its
-            // internal chain-of-thought into the answer; "/no_think" plus this instruction
-            // keeps responses direct, matching what earlier (non-reasoning) providers returned.
             response = chatClient.prompt()
-                    .system("/no_think Respond directly and concisely. Do not show your reasoning or chain of thought.")
                     .user(prompt)
                     .call()
                     .content();
